@@ -35,9 +35,9 @@ export default function LoginPage() {
     <div className="min-h-dvh flex items-center justify-center p-6 bg-stone-50">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-4xl mb-3">💰</div>
+          <div className="text-4xl mb-3">🪙</div>
           <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
-            Budget
+            Pennywise
           </h1>
           <p className="text-stone-500 text-sm mt-1">
             Household budget tracker
