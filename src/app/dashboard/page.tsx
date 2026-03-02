@@ -15,7 +15,9 @@ import {
 
 export default function DashboardPage() {
   const [monthKey, setMonthKey] = useState(getMonthKey());
+  const prevMonthKey = prevMonth(monthKey);
   const { summary, totals, loading } = useMonthlySummary(monthKey);
+  const { totals: prevTotals, loading: prevLoading } = useMonthlySummary(prevMonthKey);
   const [expandedCat, setExpandedCat] = useState<number | null>(null);
   const [expandedSubcat, setExpandedSubcat] = useState<number | null>(null);
   const { transactions: subcatTransactions, loading: txLoading } =
@@ -26,6 +28,7 @@ export default function DashboardPage() {
 
   const netBudget = totals.budgetIncome - totals.budgetExpense;
   const netActual = totals.actualIncome + totals.actualExpense; // actualExpense is negative
+  const prevNetActual = prevTotals.actualIncome + prevTotals.actualExpense;
 
   return (
     <AppShell>
@@ -53,14 +56,19 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {loading ? (
+        {loading || prevLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <>
+            {/* Current Month Label */}
+            <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-1.5 px-1">
+              {getMonthLabel(monthKey)}
+            </p>
+
             {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-3 mb-4">
               <SummaryCard
                 label="Income"
                 budget={totals.budgetIncome}
@@ -86,6 +94,44 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-[10px] text-stone-400 mt-0.5">
                   plan {netBudget >= 0 ? "+" : "-"}{formatCurrency(netBudget)}
+                </p>
+              </div>
+            </div>
+
+            {/* Previous Month Label */}
+            <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-1.5 px-1">
+              {getMonthLabel(prevMonthKey)}
+            </p>
+
+            {/* Previous Month Cards */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-stone-50 rounded-xl p-3 border border-stone-200">
+                <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-1">
+                  Income
+                </p>
+                <p className="text-sm font-semibold font-mono tabular-nums text-stone-500">
+                  {formatCurrency(prevTotals.actualIncome)}
+                </p>
+              </div>
+              <div className="bg-stone-50 rounded-xl p-3 border border-stone-200">
+                <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-1">
+                  Spending
+                </p>
+                <p className="text-sm font-semibold font-mono tabular-nums text-stone-500">
+                  {formatCurrency(Math.abs(prevTotals.actualExpense))}
+                </p>
+              </div>
+              <div className="bg-stone-50 rounded-xl p-3 border border-stone-200">
+                <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-1">
+                  Net
+                </p>
+                <p
+                  className={cn(
+                    "text-sm font-semibold font-mono tabular-nums",
+                    prevNetActual >= 0 ? "text-emerald-500" : "text-red-400"
+                  )}
+                >
+                  {prevNetActual >= 0 ? "+" : "-"}{formatCurrency(prevNetActual)}
                 </p>
               </div>
             </div>
