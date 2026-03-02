@@ -14,7 +14,12 @@ import type {
   CategoryTrend,
 } from "@/lib/types";
 
-const supabase = createClient();
+// Lazy singleton — only created when first accessed (avoids server prerender crash)
+let _supabase: ReturnType<typeof createClient>;
+function supabase() {
+  if (!_supabase) _supabase = createClient();
+  return _supabase;
+}
 
 // ─── Categories & Subcategories ────────────────────────────────────
 
@@ -26,8 +31,8 @@ export function useCategories() {
   useEffect(() => {
     async function load() {
       const [catRes, subRes] = await Promise.all([
-        supabase.from("categories").select("*").order("sort_order"),
-        supabase
+        supabase().from("categories").select("*").order("sort_order"),
+        supabase()
           .from("subcategories")
           .select("*, category:categories(*)")
           .order("sort_order"),
@@ -49,8 +54,8 @@ export function useManageCategories() {
 
   const load = useCallback(async () => {
     const [catRes, subRes] = await Promise.all([
-      supabase.from("categories").select("*").order("sort_order"),
-      supabase.from("subcategories").select("*, category:categories(*)").order("sort_order"),
+      supabase().from("categories").select("*").order("sort_order"),
+      supabase().from("subcategories").select("*, category:categories(*)").order("sort_order"),
     ]);
     if (catRes.data) setCategories(catRes.data);
     if (subRes.data) setSubcategories(subRes.data);
@@ -70,18 +75,18 @@ export async function createCategory(cat: {
   icon: string;
   sort_order: number;
 }) {
-  return supabase.from("categories").insert(cat).select().single();
+  return supabase().from("categories").insert(cat).select().single();
 }
 
 export async function updateCategory(
   id: number,
   updates: Partial<{ name: string; icon: string; sort_order: number }>
 ) {
-  return supabase.from("categories").update(updates).eq("id", id);
+  return supabase().from("categories").update(updates).eq("id", id);
 }
 
 export async function deleteCategory(id: number) {
-  return supabase.from("categories").delete().eq("id", id);
+  return supabase().from("categories").delete().eq("id", id);
 }
 
 export async function createSubcategory(sub: {
@@ -89,18 +94,18 @@ export async function createSubcategory(sub: {
   category_id: number;
   sort_order: number;
 }) {
-  return supabase.from("subcategories").insert(sub).select().single();
+  return supabase().from("subcategories").insert(sub).select().single();
 }
 
 export async function updateSubcategory(
   id: number,
   updates: Partial<{ name: string; sort_order: number }>
 ) {
-  return supabase.from("subcategories").update(updates).eq("id", id);
+  return supabase().from("subcategories").update(updates).eq("id", id);
 }
 
 export async function deleteSubcategory(id: number) {
-  return supabase.from("subcategories").delete().eq("id", id);
+  return supabase().from("subcategories").delete().eq("id", id);
 }
 
 // ─── Transactions ──────────────────────────────────────────────────
@@ -111,7 +116,7 @@ export function useTransactions(monthKey?: string) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    let query = supabase
+    let query = supabase()
       .from("transactions")
       .select("*, subcategory:subcategories(*, category:categories(*))")
       .order("date", { ascending: false })
@@ -154,14 +159,14 @@ export function useMonthlySummary(monthKey: string) {
 
     // Fetch categories, subcategories with budgets, and transactions for the month
     const [catRes, subRes, txRes] = await Promise.all([
-      supabase.from("categories").select("*").order("sort_order"),
-      supabase.from("subcategories").select("*, budgets(monthly_amount)").order("sort_order"),
+      supabase().from("categories").select("*").order("sort_order"),
+      supabase().from("subcategories").select("*, budgets(monthly_amount)").order("sort_order"),
       (() => {
         const start = monthKey;
         const d = new Date(monthKey + "T00:00:00");
         d.setMonth(d.getMonth() + 1);
         const end = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-        return supabase
+        return supabase()
           .from("transactions")
           .select("amount, subcategory_id")
           .gte("date", start)
@@ -254,7 +259,7 @@ export function useSubcategoryTransactions(
       d.setMonth(d.getMonth() + 1);
       const end = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 
-      const { data } = await supabase
+      const { data } = await supabase()
         .from("transactions")
         .select("id, date, description, amount, location")
         .eq("subcategory_id", subcategoryId)
@@ -283,7 +288,7 @@ export function useBudgets() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await supabase()
       .from("budgets")
       .select("*, subcategory:subcategories(*, category:categories(*))")
       .order("subcategory_id");
@@ -296,7 +301,7 @@ export function useBudgets() {
   }, [load]);
 
   const updateBudget = async (subcategoryId: number, amount: number) => {
-    await supabase
+    await supabase()
       .from("budgets")
       .upsert({ subcategory_id: subcategoryId, monthly_amount: amount }, { onConflict: "subcategory_id" });
     await load();
@@ -313,7 +318,7 @@ export function useAutofill() {
   useEffect(() => {
     async function load() {
       // Get recent unique transactions for autofill
-      const { data } = await supabase
+      const { data } = await supabase()
         .from("transactions")
         .select("description, amount, location, subcategory_id")
         .order("created_at", { ascending: false })
@@ -377,7 +382,7 @@ export async function createTransaction(tx: {
   location?: string;
   subcategory_id: number;
 }) {
-  return supabase.from("transactions").insert({
+  return supabase().from("transactions").insert({
     ...tx,
     location: tx.location || null,
   });
@@ -393,11 +398,11 @@ export async function updateTransaction(
     subcategory_id: number;
   }>
 ) {
-  return supabase.from("transactions").update(updates).eq("id", id);
+  return supabase().from("transactions").update(updates).eq("id", id);
 }
 
 export async function deleteTransaction(id: string) {
-  return supabase.from("transactions").delete().eq("id", id);
+  return supabase().from("transactions").delete().eq("id", id);
 }
 
 // ─── Trends ───────────────────────────────────────────────────────
@@ -444,7 +449,7 @@ export function useTrendData(monthCount: number = 6) {
     const displayMonths = fetchedMonths.slice(fetchedMonths.length - monthCount);
     setMonths(displayMonths);
 
-    const { data } = await supabase
+    const { data } = await supabase()
       .from("monthly_summary")
       .select("*")
       .gte("month", fetchStartKey)
